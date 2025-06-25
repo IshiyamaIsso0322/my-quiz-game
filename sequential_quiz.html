@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>連続正解チャレンジ！</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        main {
+            background-color: #ffffff;
+            width: 90%;
+            max-width: 500px;
+            padding: 25px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        /* 問題やメッセージのコンテナ */
+        #quiz-container, #success-container {
+            margin-top: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #444;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #5b9bd5;
+        }
+        button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #5b9bd5;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #4a7aa4;
+        }
+        /* エラーメッセージ */
+        #error-message {
+            color: #d9534f;
+            font-weight: bold;
+            margin-top: 15px;
+            height: 20px; /* メッセージが無くてもスペースを確保 */
+        }
+        /* 成功メッセージは最初は隠しておく */
+        #success-container {
+            display: none; /* JavaScriptで表示を切り替える */
+            padding: 20px;
+            background-color: #dff0d8;
+            border: 2px solid #77b55a;
+            border-radius: 8px;
+        }
+        #success-container h2 {
+            color: #3c763d;
+        }
+    </style>
+</head>
+<body>
+
+    <main>
+        <h1>連続正解チャレンジ！</h1>
+        
+        <div id="quiz-container">
+            <label id="question-label"></label>
+            <input type="text" id="answer-input" placeholder="答えを入力してください">
+            <div id="error-message"></div>
+            <button onclick="checkAnswer()">回答する</button>
+        </div>
+
+        <div id="success-container">
+            <h2>🎉 全問正解！おめでとうございます！ 🎉</h2>
+            <p>すべての問題をクリアしました。</p>
+            <p style="font-size: 1.2em; font-weight: bold;">
+                指定のテキスト：<span style="color: #c0392b;">*&---------------------------------------------------------------------*
+*& プログラムID: ZPROG_S145681
+*& プログラム名:   ABAP_演習課題
+*& 機能内容     :
+*& 注意事項     :
+*&--------------------(変更履歴)---------------------------------------*
+*& V001 0000-0000 2025/06/16 石山一聡(S145681)
+*& 新規作成
+*&---------------------------------------------------------------------*
+*& V002 0000-0000 2025/06/19 石山一聡(S145681)
+*& 出力画面をALVに変更
+*&---------------------------------------------------------------------*
+*& v002.1 0000-0000 2025/06/20 石山一聡(S145681)
+*& セレクトボタンで出力内容を選択可能に
+*&---------------------------------------------------------------------*
+*& v003 0000-0000 2025/06/25 石山一聡(S145681)
+*& 結果出力/ファイルアップロード機能の追加、それに伴う処理分岐の追加
+*&---------------------------------------------------------------------*
+
+REPORT  ZPROG_S145681
+  LINE-SIZE 255
+  LINE-COUNT 65
+  NO STANDARD PAGE HEADING.
+
+*----------------------------------------------------------------------*
+* INCLUDE
+*----------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+* TYPES
+*----------------------------------------------------------------------*
+TYPES:
+  BEGIN OF TY_ST_TOTAL,
+    BUKRS TYPE BUKRS,   "会社コード
+    GJAHR TYPE GJAHR,   "年度
+    TOTAL TYPE WRBTR,   "金額
+    WAERS TYPE WAERS,   "通貨コード
+  END OF TY_ST_TOTAL,
+  TY_TA_TOTAL TYPE STANDARD TABLE OF TY_ST_TOTAL,
+
+  TY_ST_ZTABLE TYPE ZTABLE_EX25,
+  TY_TA_ZTABLE TYPE STANDARD TABLE OF ZTABLE_EX25.
+
+*---ADD V002 S145681 FROM---*
+  TYPE-POOLS:SLIS.
+* ---ADD V002 S145681 TO   ---*
+
+*----------------------------------------------------------------------*
+* STRUCTURE / INNER TABLE
+*----------------------------------------------------------------------*
+DATA:
+  TA_TOTAL          TYPE TY_TA_TOTAL,   "内部テーブル：合計
+  TA_ZTABLE         TYPE TY_TA_ZTABLE.  "内部テーブル：テーブルデータ
+
+*---DEL V003 S145681 FROM---*
+* WK_BUTXT          TYPE BUTXT.          "変数：会社名称
+*---DEL V003 S145681 TO---*
+*---ADD V003 S145681 FROM---*
+DATA:
+  TA_FILEDATA       TYPE TY_TA_ZTABLE,  "内部テーブル：ファイル格納用
+  WK_BUTXT          TYPE BUTXT.         "変数：会社名称
+*---ADD V003 S145681 TO---*
+
+
+*----------------------------------------------------------------------*
+* GLOBAL DATA
+*----------------------------------------------------------------------*
+DATA:
+  WK_GJAHR  TYPE GJAHR,
+  WK_MONAT  TYPE MONAT.
+
+*----------------------------------------------------------------------*
+* GLOBAL CONSTANTS
+*----------------------------------------------------------------------*
+CONSTANTS:
+  C_E(1)  TYPE C VALUE 'E',
+  C_JPY(3) TYPE C VALUE 'JPY'.
+
+*----------------------------------------------------------------------*
+* PARAMETER SCREEN
+*----------------------------------------------------------------------*
+*---CHG V003 S145681 FROM---*
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-S01. "結果出力
+PARAMETERS:
+  RESU TYPE C AS CHECKBOX.
+
+PARAMETERS:
+  P_BUKRS TYPE BUKRS.
+
+SELECT-OPTIONS:
+  S_GJAHR FOR WK_GJAHR,
+  S_MONAT FOR WK_MONAT.
+SELECTION-SCREEN END OF BLOCK B1.
+
+SELECTION-SCREEN BEGIN OF BLOCK B2 WITH FRAME TITLE TEXT-S02. "ファイルアップロード
+PARAMETERS:
+   UP TYPE C AS CHECKBOX.
+
+PARAMETERS:
+  P_PATH TYPE STRING.
+
+PARAMETERS:
+  RB_INT RADIOBUTTON GROUP R1 DEFAULT 'X', "登録
+  RB_UPD RADIOBUTTON GROUP R1,             "更新
+  RB_DEL RADIOBUTTON GROUP R1.             "削除
+SELECTION-SCREEN END OF BLOCK B2.
+*---CHG V003 S145681 TO---*
+
+*----------------------------------------------------------------------*
+* INITIALIZATION
+*----------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM INIT_DATA.
+*----------------------------------------------------------------------*
+* AT SELECTION SCREEN
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN.
+  TYPES LTY_ST_T001 TYPE T001.
+  DATA:
+    LST_T001    TYPE LTY_ST_T001,
+    LST_ZTABLE  TYPE TY_ST_ZTABLE.
+
+*---CHG V003 S145681 FROM---*
+* 会社コード、DB存在チェックは結果出力がONの場合のみ実行
+  IF RESU = 'X'.
+    " 会社コード存在チェック
+    SELECT SINGLE *
+      FROM T001
+      INTO LST_T001
+      WHERE BUKRS = P_BUKRS.
+
+    IF SY-SUBRC <> 0.
+      MESSAGE ID '5A' TYPE 'E' NUMBER 077 WITH P_BUKRS.
+    ELSE.
+      WK_BUTXT = LST_T001-BUTXT.
+    ENDIF.
+
+    " DBテーブル存在チェック
+    SELECT SINGLE *
+      FROM ZTABLE_EX25
+      INTO LST_ZTABLE
+     WHERE BUKRS = P_BUKRS.
+
+    IF SY-SUBRC <> 0.
+      MESSAGE ID '6D' TYPE 'E' NUMBER 360 WITH P_BUKRS.
+    ENDIF.
+  ENDIF.
+*---CHG V003 S145681 TO---*
+
+*&---------------------------------------------------------------------*
+*& FORM INIT_DATA
+*&---------------------------------------------------------------------*
+* グローバル変数の初期化
+*----------------------------------------------------------------------*
+FORM INIT_DATA.
+  CLEAR:
+    TA_TOTAL,
+    TA_ZTABLE.
+*---ADD V003 S145681 FROM---*
+  CLEAR:
+    TA_FILEDATA.
+*---ADD V003 S145681 TO---*
+ENDFORM.      "INIT DATA
+*----------------------------------------------------------------------*
+* START-OF-SELECTION
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+*---CHG V003 S145681 FROM---*
+* メインプロセス
+* ファイルアップロード実行がチェックされている場合
+  IF UP = 'X'.
+    PERFORM UPLOAD_AND_EDIT_DB.
+  ENDIF.
+
+* 結果出力実行がチェックされている場合
+  IF RESU = 'X'.
+    PERFORM CREATE_REPORT.
+  ENDIF.
+*---CHG V003 S145681 TO---*
+
+*&---------------------------------------------------------------------*
+*& FORM MAIN PROC
+*&---------------------------------------------------------------------*
+* メインプロセス
+*----------------------------------------------------------------------*
+*---DEL V003 S145681 FROM---*
+*FORM MAIN_PROC.
+**課題1
+* PERFORM GET_DATA.
+* PERFORM CALC_DATA.
+* PERFORM DISPLAY_DATA.
+*
+* MESSAGE S380(TP).
+*ENDFORM.    "MAIN_PROC
+*---DEL V003 S145681 TO---*
+
+*---ADD V003 S145681 FROM---*
+*&---------------------------------------------------------------------*
+*& FORM UPLOAD_AND_EDIT_DB
+*&---------------------------------------------------------------------*
+* ファイルのアップロードとDB更新
+*----------------------------------------------------------------------*
+FORM UPLOAD_AND_EDIT_DB.
+* (1) ファイル取込
+  IF SY-BATCH IS INITIAL. " オンライン実行の場合
+    PERFORM UPLOAD_FILE_ONLINE.
+  ELSE. " バックグラウンド実行の場合
+    PERFORM READ_FILE_BACKGROUND.
+  ENDIF.
+
+* ファイルデータが取得できた場合のみDB編集処理へ進む
+  IF TA_FILEDATA IS NOT INITIAL.
+* (2) DB編集
+    PERFORM EDIT_DATABASE.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM CREATE_REPORT
+*&---------------------------------------------------------------------*
+* レポート作成（データ抽出、集計、表示）
+*----------------------------------------------------------------------*
+FORM CREATE_REPORT.
+* (1) データ抽出
+  PERFORM GET_DATA.
+
+* データが取得できた場合のみ後続処理へ進む
+  IF TA_ZTABLE IS NOT INITIAL.
+* (2) データ編集（集計）
+    PERFORM CALC_DATA.
+* (3) 結果出力
+    PERFORM DISPLAY_DATA.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM UPLOAD_FILE_ONLINE
+*&---------------------------------------------------------------------*
+* オンラインでのファイルアップロード
+*----------------------------------------------------------------------*
+FORM UPLOAD_FILE_ONLINE.
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      FILENAME                = P_PATH
+      HAS_FIELD_SEPARATOR   = 'X' "タブ区切り
+      CODEPAGE                = '8000' "Shift-JIS
+    TABLES
+      DATA_TAB                = TA_FILEDATA
+    EXCEPTIONS
+      FILE_OPEN_ERROR         = 11
+      FILE_READ_ERROR         = 22
+      NO_BATCH                = 33
+      GUI_REFUSE_FILETRANSFER = 44
+      INVALID_TYPE            = 55
+      NO_AUTHORITY            = 66
+      UNKNOWN_ERROR           = 77
+      BAD_DATA_FORMAT         = 88
+      OTHERS                  = 99.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE S002(ZMSG) DISPLAY LIKE C_E. "エラーメッセージを出し、処理終了
+    LEAVE PROGRAM.
+  ENDIF.
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& FORM EDIT_DATABASE
+*&---------------------------------------------------------------------*
+* DB編集（登録・更新・削除）
+*----------------------------------------------------------------------*
+FORM EDIT_DATABASE.
+  DATA: LV_MSG(20) TYPE C.
+
+* DB編集処理
+  IF RB_INT = 'X'.
+
+    " 更新処理
+    LV_MSG = '更新'.
+    UPDATE ZTABLE_S145681 FROM TABLE TA_FILEDATA.
+  ELSEIF RB_DEL = 'X'.
+    " 削除処理
+    LV_MSG = '削除'.
+    DELETE ZTABLE_S145681 FROM TABLE TA_FILEDATA.
+  ENDIF.
+
+* トランザクション制御
+  IF SY-SUBRC = 0.
+    COMMIT WORK.
+    MESSAGE S004(ZMSG) WITH LV_MSG. " COMMIT WORK. メッセージを出力し処理を続行
+
+ENDFORM.
+*---ADD V003 S145681 TO---*
+
+*&---------------------------------------------------------------------*
+*& FORM GET_DATA
+*&---------------------------------------------------------------------*
+* テーブルからデータ取得
+*----------------------------------------------------------------------*
+FORM GET_DATA.
+
+  IF SY-SUBRC <> 0.
+*---CHG V003 S145681 FROM---*
+    MESSAGE S001(ZMSG) DISPLAY LIKE C_E. " エラーメッセージを出力し、処理終了
+    LEAVE LIST-PROCESSING.
+*---CHG V003 S145681 TO---*
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& CALC_DATA
+*&---------------------------------------------------------------------*
+* 取得したデータから会計年度ごとの合計額を求める。
+*----------------------------------------------------------------------*
+FORM CALC_DATA.
+  DATA:
+     LWK_TOTAL  TYPE WRBTR,
+     LST_TOTAL  TYPE TY_ST_TOTAL,
+     LST_KEEP   TYPE TY_ST_ZTABLE,
+     LST_ZTABLE TYPE TY_ST_ZTABLE.
+
+  SORT TA_ZTABLE BY GJAHR MONAT.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& WRITE_DATA
+*&---------------------------------------------------------------------*
+* バックグラウンド実行時のスプール出力
+*----------------------------------------------------------------------*
+FORM WRITE_DATA.
+  DATA:
+    LST_ZTABLE    TYPE TY_ST_ZTABLE,
+    LST_TOTAL     TYPE TY_ST_TOTAL,
+    LST_ZTABLETMP TYPE TY_ST_ZTABLE.
+
+  WRITE:
+    /  TEXT-T01,
+    12 P_BUKRS,
+    /  TEXT-T02,
+    12 S_GJAHR-LOW,
+    18 '～',
+    24 S_GJAHR-HIGH,
+    /  TEXT-T03,
+    12 S_MONAT-LOW,
+    18 '～',
+    24 S_MONAT-HIGH.
+
+  LOOP AT TA_ZTABLE INTO LST_ZTABLE.
+    AT NEW GJAHR.
+      PERFORM WRITE_ITEM_HEADER.
+    ENDAT.
+
+    AT END OF GJAHR.
+      PERFORM WRITE_TOTAL_HEADER.
+
+      READ TABLE TA_TOTAL
+        INTO LST_TOTAL
+        WITH KEY GJAHR = LST_ZTABLE-GJAHR.
+
+      WRITE:
+        /42 LST_TOTAL-TOTAL CURRENCY LST_ZTABLETMP-WAERS,
+        60  LST_ZTABLETMP-WAERS,
+        /.
+    ENDAT.
+
+  ENDLOOP.
+*---ADD V003 S145681 FROM---*
+* 正常終了メッセージ
+  MESSAGE S005(ZMSG).
+*---ADD V003 S145681 TO---*
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& WRITE_ITEM_HEADER
+*&---------------------------------------------------------------------*
+* ヘッダ出力
+*----------------------------------------------------------------------*
+FORM WRITE_ITEM_HEADER.
+  ULINE.
+  WRITE:
+    /  TEXT-T01,
+    12 TEXT-T07,
+
+  ULINE.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& WRITE_TOTAL_HEADER
+*&---------------------------------------------------------------------*
+* 合計ヘッダ出力
+*----------------------------------------------------------------------*
+FORM WRITE_TOTAL_HEADER.
+  ULINE.
+  WRITE:
+    /49 TEXT-T05,
+    TEXT-T06.
+  ULINE.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& DISPLAY_DATA
+*&---------------------------------------------------------------------*
+* オンライン/バックグラウンドで出力処理を分岐
+*----------------------------------------------------------------------*
+FORM DISPLAY_DATA.
+*---CHG V003 S145681 FROM---*
+  ELSE. " バックグラウンド実行の場合
+    PERFORM WRITE_DATA. " スプール出力
+  ENDIF.
+*---CHG V003 S145681 TO---*
+ENDFORM.
+
+*---ADD V003 S145681 FROM---*
+*&---------------------------------------------------------------------*
+*& DISPLAY_ALV
+*&---------------------------------------------------------------------*
+* オンライン実行時のALV出力
+*----------------------------------------------------------------------*
+FORM DISPLAY_ALV.
+  DATA:
+    LTA_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV,
+    LST_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
+
+  " フィールドカタログの設定
+  LST_FIELDCAT-COL_POS      = '1'.
+  LST_FIELDCAT-FIELDNAME    = 'BUKRS'.
+  LST_FIELDCAT-REF_TABNAME  = 'T001'. " 参照テーブル
+  LST_FIELDCAT-SELTEXT_M    = '会社コード'.
+  APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+  CLEAR LST_FIELDCAT.
+
+  LST_FIELDCAT-COL_POS      = '2'.
+  LST_FIELDCAT-FIELDNAME    = 'GJAHR'.
+  LST_FIELDCAT-REF_TABNAME  = 'ZTABLE_EX25'. " 参照テーブル
+  LST_FIELDCAT-SELTEXT_M    = '会計年度'.
+  APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+  CLEAR LST_FIELDCAT.
+
+  LST_FIELDCAT-COL_POS      = '3'.
+  LST_FIELDCAT-FIELDNAME    = 'TOTAL'.
+  LST_FIELDCAT-CFIELDNAME   = 'WAERS'. " 通貨参照項目
+  LST_FIELDCAT-SELTEXT_M    = '合計金額'.
+  APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+  CLEAR LST_FIELDCAT.
+
+  LST_FIELDCAT-COL_POS      = '4'.
+  LST_FIELDCAT-FIELDNAME    = 'WAERS'.
+  LST_FIELDCAT-SELTEXT_M    = '通貨コード'.
+  APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+  CLEAR LST_FIELDCAT.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM = SY-REPID
+      IT_FIELDCAT        = LTA_FIELDCAT
+      I_SAVE             = 'X'
+    TABLES
+      T_OUTTAB           = TA_TOTAL
+    EXCEPTIONS
+      PROGRAM_ERROR      = 1
+      OTHERS             = 2.
+
+  IF SY-SUBRC = 0.
+    " 正常終了メッセージ
+    MESSAGE S005(ZMSG).
+  ELSE.
+    MESSAGE E001(ZMSG) WITH 'ALV表示エラー'.
+  ENDIF.
+ENDFORM.
+*---ADD V003 S145681 TO---*
+
+*---DEL V003 S145681 FROM---*
+*&---------------------------------------------------------------------*
+*& DISPLAY_TOTAL
+*&---------------------------------------------------------------------*
+** 合計金額のテーブルをALV出力
+*----------------------------------------------------------------------*
+*FORM DISPLAY_TOTAL.
+* DATA:
+* LTA_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV,
+* LST_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
+*
+* LST_FIELDCAT-COL_POS       = '1'.
+* LST_FIELDCAT-FIELDNAME     = 'BUKRS'.
+* LST_FIELDCAT-REF_TABNAME   = '内部テーブル：合計のフィールド名'.
+* LST_FIELDCAT-SELTEXT_M     = '会社コード'.
+* APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+*
+* LST_FIELDCAT-COL_POS       = '2'.
+* LST_FIELDCAT-FIELDNAME     = 'GJAHR'.
+* LST_FIELDCAT-REF_TABNAME   = '内部テーブル：合計のフィールド名'.
+* LST_FIELDCAT-SELTEXT_M     = '会計年度'.
+* APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+*
+* LST_FIELDCAT-COL_POS       = '3'.
+* LST_FIELDCAT-FIELDNAME     = 'TOTAL'.
+* LST_FIELDCAT-REF_TABNAME   = '内部テーブル：合計のフィールド名'.
+* LST_FIELDCAT-SELTEXT_M     = '合計金額'.
+* APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+*
+* LST_FIELDCAT-COL_POS       = '4'.
+* LST_FIELDCAT-FIELDNAME     = 'WAERS'.
+* LST_FIELDCAT-REF_TABNAME   = '内部テーブル：合計のフィールド名'.
+* LST_FIELDCAT-SELTEXT_M     = '通貨コード'.
+* APPEND LST_FIELDCAT TO LTA_FIELDCAT.
+*
+* CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+* EXPORTING
+* I_CALLBACK_PROGRAM  = SY-REPID
+* IT_FIELDCAT         = LTA_FIELDCAT
+* I_SAVE              = 'X'
+* TABLES
+* T_OUTTAB            = TA_TOTAL
+* EXCEPTIONS
+* PROGRM_ERROR        = 1
+* OTHERS              = 2.
+*ENDFORM.
+*
+*
+*&---------------------------------------------------------------------*
+*& DISPLAY_IND
+*&---------------------------------------------------------------------*
+** 年度月別の金額をALV出力
+*----------------------------------------------------------------------*
+*FORM DISPLAY_IND.
+* DATA:
+* LTA_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+*
+* CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
+* EXPORTING
+* I_PROGRAM_NAME           = SY-REPID
+* I_STRUCTURE_NAME         = 'ZTABLE_EX25'
+* CHANGING
+* CT_FIELDCAT              = LTA_FIELDCAT
+* EXCEPTIONS
+* INCONSISTENT_INTERFACE   = 1
+* PROGRAM_ERROR            = 2
+* OTHERS                   = 3.
+*
+* CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+* EXPORTING
+* I_CALLBACK_PROGRAM  = SY-REPID
+* IT_FIELDCAT         = LTA_FIELDCAT
+* I_SAVE              = 'X'
+* TABLES
+* T_OUTTAB            = TA_ZTABLE
+* EXCEPTIONS
+* PROGRM_ERROR        = 1
+* OTHERS              = 2.
+*ENDFORM.
+*---DEL V003 S145681 TO---*</span>
+            </p>
+        </div>
+    </main>
+
+    <script>
+        // ======================================================
+        // ▼▼▼ 問題と答えをここ編集してください ▼▼▼
+        // ======================================================
+        const quizData = [
+            {
+                question: "おれの今日の靴下の色は？",
+                answer: "黒"
+            },
+            {
+                question: "あすまのおかあさんの名前は？",
+                answer: "たみこ"
+            },
+            {
+                question: "岡本さんのtinkoの大きさは何センチ？",
+                answer: "2"
+            },
+            {
+                question: "おれが初めて抱いた子の名前は？",
+                answer: "あやね"
+            },
+            {
+                question: "【最終問題】もう自力ではコードやらない？",
+                answer: "はい"
+            }
+        ];
+        // ======================================================
+        // ▲▲▲ 編集はここまで ▲▲▲
+        // ======================================================
+
+        // 現在の問題番号を管理する変数（0からスタート）
+        let currentQuestionIndex = 0;
+
+        // HTML要素を取得
+        const questionLabel = document.getElementById('question-label');
+        const answerInput = document.getElementById('answer-input');
+        const errorMessage = document.getElementById('error-message');
+        const quizContainer = document.getElementById('quiz-container');
+        const successContainer = document.getElementById('success-container');
+
+        // 最初の問題を表示する関数
+        function showQuestion() {
+            const currentQuiz = quizData[currentQuestionIndex];
+            questionLabel.textContent = `第${currentQuestionIndex + 1}問: ${currentQuiz.question}`;
+            answerInput.value = ""; // 入力欄を空にする
+            errorMessage.textContent = ""; // エラーメッセージを消す
+            answerInput.focus(); // 入力欄にカーソルを合わせる
+        }
+
+        // 回答をチェックする関数（ボタンが押されたときに呼ばれる）
+        function checkAnswer() {
+            const userAnswer = answerInput.value.trim(); // 入力値の前後の空白を削除
+            const correctAnswer = quizData[currentQuestionIndex].answer;
+
+            // 答えが正しいかチェック（別解を許す場合はここで調整）
+            if (userAnswer === correctAnswer) {
+                // 正解の場合
+                currentQuestionIndex++; // 次の問題へ
+
+                if (currentQuestionIndex < quizData.length) {
+                    // まだ問題が残っている場合
+                    showQuestion(); // 次の問題を表示
+                } else {
+                    // 全問正解した場合
+                    quizContainer.style.display = 'none'; // クイズエリアを隠す
+                    successContainer.style.display = 'block'; // 成功メッセージを表示
+                }
+            } else {
+                // 不正解の場合
+                errorMessage.textContent = "答えが違います。もう一度考えてみよう！";
+            }
+        }
+        
+        // Enterキーでも回答できるようにする
+        answerInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // ページが読み込まれたら、最初の問題を表示
+        showQuestion();
+    </script>
+
+</body>
+</html>
